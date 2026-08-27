@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Argument to control planner launch -->
+    <arg name="launch_planner" default="true"/>
+
+    <!-- planner_node (jie_path_node) -->
+    <node pkg="octo_planner" type="jie_path_node" name="jie_path_node" output="screen" if="$(arg launch_planner)">
+        <param name="octomap_topic" value="/octomap"/>
+        <param name="start_topic" value="/start_point"/>
+        <param name="goal_topic" value="/goal_point"/>
+        <param name="path_topic" value="/planned_path"/>
+        <param name="path_marker_topic" value="/planned_path_marker"/>
+        <param name="preblocked_marker_topic" value="/preblocked_cells_markers"/>
+        <param name="traversable_marker_topic" value="/traversable_cells_markers"/>
+        <param name="risk_cost_topic" value="/risk_cost_cells"/>
+        <param name="frame_id" value="map"/>
+        <param name="map_id" value="loaded_map"/>
+        <param name="source_world_file" value=""/>
+        <param name="robot_radius" value="0.25"/>
+        <param name="max_iterations" value="500000"/>
+        <param name="snap_search_radius_cells" value="12"/>
+        <param name="require_ground_support" value="true"/>
+        <param name="strict_direct_ground_support" value="false"/>
+        <param name="ground_support_xy_radius_cells" value="1"/>
+        <param name="ground_support_depth_cells" value="3"/>
+        <param name="enable_preblocked_costmap" value="true"/>
+        <param name="preblocked_costmap_radius_cells" value="3"/>
+        <param name="preblocked_costmap_weight" value="2.5"/>
+        <param name="lowest_traversable_only" value="true"/>
+        <param name="max_step_height_cells" value="3"/>
+        <param name="robot_clearance_height_cells" value="3"/>
+    </node>
+
+    <!-- map_package_manager -->
+    <node pkg="jie_octomap" type="map_package_manager.py" name="map_package_manager" output="screen">
+        <remap from="~save_package" to="/map_package_manager/save_package"/>
+        <remap from="~load_package" to="/map_package_manager/load_package"/>
+    </node>
+
+    <!-- occupied_marker_node -->
+    <node pkg="jie_octomap" type="octomap_to_occupied_markers_node" name="octomap_to_occupied_markers" output="screen">
+        <param name="octomap_topic" value="/octomap"/>
+        <param name="marker_topic" value="/octomap_occupied_markers"/>
+        <param name="frame_id" value="map"/>
+    </node>
+
+    <!-- map_viewer_server (exiting this will shutdown the entire launch file) -->
+    <node pkg="jie_octomap" type="map_viewer_server" name="map_viewer_server" output="screen" required="true">
+    </node>
+</launch>
