@@ -36,7 +36,7 @@ def generate_launch_description():
                 "frame_id": "map",
                 "map_id": "loaded_map",
                 "source_world_file": "",
-                "robot_radius": 0.35,
+                "robot_radius": 0.25,
                 "max_iterations": 500000,
                 "snap_search_radius_cells": 12,
                 "require_ground_support": True,

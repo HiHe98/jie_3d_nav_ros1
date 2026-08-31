@@ -45,6 +45,9 @@ public:
     int preblocked_costmap_radius_cells;
     double preblocked_costmap_weight;
     bool lowest_traversable_only;
+    bool enable_path_shortcut, enable_path_smoothing, enable_continuous_yaw;
+    double path_interpolation_resolution, corner_fillet_radius;
+    int yaw_smoothing_window;
 
     private_nh.param<double>("robot_radius", robot_radius, 0.20);
     private_nh.param<int>("max_iterations", max_iterations, 250000);
@@ -59,6 +62,12 @@ public:
     private_nh.param<int>("preblocked_costmap_radius_cells", preblocked_costmap_radius_cells, 3);
     private_nh.param<double>("preblocked_costmap_weight", preblocked_costmap_weight, 1.5);
     private_nh.param<bool>("lowest_traversable_only", lowest_traversable_only, false);
+    private_nh.param<bool>("enable_path_shortcut", enable_path_shortcut, true);
+    private_nh.param<bool>("enable_path_smoothing", enable_path_smoothing, true);
+    private_nh.param<double>("path_interpolation_resolution", path_interpolation_resolution, 0.05);
+    private_nh.param<double>("corner_fillet_radius", corner_fillet_radius, 0.30);
+    private_nh.param<bool>("enable_continuous_yaw", enable_continuous_yaw, true);
+    private_nh.param<int>("yaw_smoothing_window", yaw_smoothing_window, 5);
 
     planner_.setRobotRadius(robot_radius);
     planner_.setMaxIterations(max_iterations);
@@ -74,6 +83,12 @@ public:
     planner_.setPreblockedCostmapRadiusCells(preblocked_costmap_radius_cells);
     planner_.setPreblockedCostmapWeight(preblocked_costmap_weight);
     planner_.setLowestTraversableOnly(lowest_traversable_only);
+    planner_.setEnablePathShortcut(enable_path_shortcut);
+    planner_.setEnablePathSmoothing(enable_path_smoothing);
+    planner_.setPathInterpolationResolution(path_interpolation_resolution);
+    planner_.setCornerFilletRadius(corner_fillet_radius);
+    planner_.setEnableContinuousYaw(enable_continuous_yaw);
+    planner_.setYawSmoothingWindow(yaw_smoothing_window);
 
     // Subscribe to Octomap
     ros::NodeHandle nh;
@@ -112,42 +127,17 @@ public:
       return false;
     }
 
-    plan.clear();
-    plan.reserve(cells.size());
-    ros::Time plan_time = ros::Time::now();
-
-    for (size_t i = 0; i < cells.size(); ++i)
-    {
-      const auto p = planner_.gridToWorld(cells[i]);
-      geometry_msgs::PoseStamped pose;
-      pose.header.stamp = plan_time;
-      pose.header.frame_id = start.header.frame_id;
-      pose.pose.position.x = p.x();
-      pose.pose.position.y = p.y();
-      pose.pose.position.z = p.z();
-      pose.pose.orientation.w = 1.0;
-      
-      // Preserve original orientation at the start/goal if applicable
-      if (i == 0)
-      {
-        pose.pose.orientation = start.pose.orientation;
-      }
-      else if (i + 1 == cells.size())
-      {
-        pose.pose.orientation = goal.pose.orientation;
-      }
-      
-      plan.push_back(pose);
-    }
+    // Generate smooth, interpolated path with continuous yaw
+    plan = planner_.generateSmoothPath(cells, start, goal, true);
 
     // Manually publish the full plan
     nav_msgs::Path path_msg;
-    path_msg.header.stamp = plan_time;
+    path_msg.header.stamp = ros::Time::now();
     path_msg.header.frame_id = start.header.frame_id;
     path_msg.poses = plan;
     plan_pub_.publish(path_msg);
 
-    ROS_INFO_THROTTLE(1.0, "OctoGlobalPlanner: Path found with %zu points. Published to /move_base/plan", plan.size());
+    ROS_INFO_THROTTLE(1.0, "OctoGlobalPlanner: Smooth path generated with %zu points (raw waypoints: %zu). Published to /move_base/plan", plan.size(), cells.size());
     return true;
   }
 
